@@ -1,0 +1,36 @@
+---
+title: "Project 1"
+author: "Isaac"
+format: html
+editor: visual
+---
+
+## Querying Census API
+
+The goal of this project is to query the "Public Use Microdata Sample" (PUMS) API from the Census Bureau. We do this by first building the URL to contact a particular endpoint of the PUMS API. In particular, we will go with the example call provided in the PUMS API under their most recent year, 2022, which we store as a string.
+
+```{r}
+URL_pums <- "https://api.census.gov/data/2022/acs/acs1/pums/variables.json"
+```
+
+Next we use the `httr::GET()` function to contact the website and explore its structure.
+
+```{r}
+pums_info <- httr::GET(URL_pums)
+str(pums_info, max.level = 1)
+```
+
+This is a lot of information and not very clear or readable, so we will use the `jsonlite` package to parse this data.
+
+```{r}
+library(jsonlite)
+
+#parse data using rawToChar() function 
+parsed <- fromJSON(rawToChar(pums_info$content))
+
+#turn parsed data into nice tibble
+acs_estimates_info <- tibble::as_tibble(parsed$data)
+
+#display tibble
+acs_estimates_info
+```

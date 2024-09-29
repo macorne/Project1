@@ -107,7 +107,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="querying-census-api">Querying Census API</h2>
 <p>The goal of this project is to query the “Public Use Microdata Sample” (PUMS) API from the Census Bureau. We do this by first building the URL to contact a particular endpoint of the PUMS API. In particular, we will go with the example call provided in the PUMS API under their most recent year, 2022, which we store as a string.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>URL_pums <span class="ot">&lt;-</span> <span class="st">"https://api.census.gov/data/2022/acs/acs1/pums/variables.json"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>URL_pums <span class="ot">&lt;-</span> <span class="st">"https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&amp;SCHL=24"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Next we use the <code>httr::GET()</code> function to contact the website and explore its structure.</p>
 <div class="cell">
@@ -115,15 +115,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(pums_info, <span class="at">max.level =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>List of 10
- $ url        : chr "https://api.census.gov/data/2022/acs/acs1/pums/variables.json"
+ $ url        : chr "https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&amp;SCHL=24"
  $ status_code: int 200
- $ headers    :List of 14
+ $ headers    :List of 12
   ..- attr(*, "class")= chr [1:2] "insensitive" "list"
  $ all_headers:List of 1
  $ cookies    :'data.frame':    1 obs. of  7 variables:
- $ content    : raw [1:486457] 7b 0a 20 20 ...
- $ date       : POSIXct[1:1], format: "2024-09-28 21:22:01"
- $ times      : Named num [1:6] 0 0.197 0.23 0.36 0.395 ...
+ $ content    : raw [1:937508] 5b 5b 22 53 ...
+ $ date       : POSIXct[1:1], format: "2024-09-29 22:07:14"
+ $ times      : Named num [1:6] 0 0.00253 0.08533 1.81291 2.05725 ...
   ..- attr(*, "names")= chr [1:6] "redirect" "namelookup" "connect" "pretransfer" ...
  $ request    :List of 7
   ..- attr(*, "class")= chr "request"
@@ -134,17 +134,58 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This is a lot of information and not very clear or readable, so we will use the <code>jsonlite</code> package to parse this data.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(jsonlite)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#parse data using rawToChar() function </span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>parsed <span class="ot">&lt;-</span> <span class="fu">fromJSON</span>(<span class="fu">rawToChar</span>(pums_info<span class="sc">$</span>content))</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#turn parsed data into nice tibble</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>acs_estimates_info <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">as_tibble</span>(parsed<span class="sc">$</span>data)</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#display tibble</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>acs_estimates_info</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tibble)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">#parse data using rawToChar() function </span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>parsed <span class="ot">&lt;-</span> <span class="fu">fromJSON</span>(<span class="fu">rawToChar</span>(pums_info<span class="sc">$</span>content))</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#turn parsed data into nice tibble</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>acs_estimates_info <span class="ot">&lt;-</span> <span class="fu">as_tibble</span>(parsed)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The `x` argument of `as_tibble.matrix()` must have unique column names if
+`.name_repair` is omitted as of tibble 2.0.0.
+ℹ Using compatibility `.name_repair`.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>acs_estimates_info</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 0 × 0</code></pre>
+<pre><code># A tibble: 44,080 × 4
+   V1    V2    V3    V4   
+   &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
+ 1 SEX   PWGTP MAR   SCHL 
+ 2 2     6     5     24   
+ 3 2     23    2     24   
+ 4 1     23    3     24   
+ 5 1     80    5     24   
+ 6 1     16    1     24   
+ 7 1     107   3     24   
+ 8 2     10    5     24   
+ 9 1     22    1     24   
+10 2     127   5     24   
+# ℹ 44,070 more rows</code></pre>
+</div>
+</div>
+<p>This is not quite what we want because the column names are “V1”, “V2”, “V3”, “V4”, default names, and the first row of observations are “SEX”, “PWGTP”, “MAR”, “SCHL”, are <em>what should be</em> the columns names. The following code will fix this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>row_length <span class="ot">&lt;-</span> <span class="fu">nrow</span>(acs_estimates_info)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>acs_estimates_info_updated <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="st">"SEX"</span> <span class="ot">=</span> acs_estimates_info<span class="sc">$</span>V1[<span class="dv">2</span><span class="sc">:</span>row_length], <span class="st">"PWGTP"</span> <span class="ot">=</span> acs_estimates_info<span class="sc">$</span>V2[<span class="dv">2</span><span class="sc">:</span>row_length], <span class="st">"MAR"</span> <span class="ot">=</span> acs_estimates_info<span class="sc">$</span>V3[<span class="dv">2</span><span class="sc">:</span>row_length], <span class="st">"SCHL"</span> <span class="ot">=</span> acs_estimates_info<span class="sc">$</span>V4[<span class="dv">2</span><span class="sc">:</span>row_length])</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>acs_estimates_info_updated</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 44,079 × 4
+   SEX   PWGTP MAR   SCHL 
+   &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
+ 1 2     6     5     24   
+ 2 2     23    2     24   
+ 3 1     23    3     24   
+ 4 1     80    5     24   
+ 5 1     16    1     24   
+ 6 1     107   3     24   
+ 7 2     10    5     24   
+ 8 1     22    1     24   
+ 9 2     127   5     24   
+10 2     46    5     24   
+# ℹ 44,069 more rows</code></pre>
 </div>
 </div>
 </section>

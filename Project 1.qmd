@@ -10,7 +10,7 @@ editor: visual
 The goal of this project is to query the "Public Use Microdata Sample" (PUMS) API from the Census Bureau. We do this by first building the URL to contact a particular endpoint of the PUMS API. In particular, we will go with the example call provided in the PUMS API under their most recent year, 2022, which we store as a string.
 
 ```{r}
-URL_pums <- "https://api.census.gov/data/2022/acs/acs1/pums/variables.json"
+URL_pums <- "https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24"
 ```
 
 Next we use the `httr::GET()` function to contact the website and explore its structure.
@@ -24,13 +24,23 @@ This is a lot of information and not very clear or readable, so we will use the 
 
 ```{r}
 library(jsonlite)
+library(tibble)
 
 #parse data using rawToChar() function 
 parsed <- fromJSON(rawToChar(pums_info$content))
 
 #turn parsed data into nice tibble
-acs_estimates_info <- tibble::as_tibble(parsed$data)
+acs_estimates_info <- as_tibble(parsed)
 
-#display tibble
 acs_estimates_info
+```
+
+This is not quite what we want because the column names are "V1", "V2", "V3", "V4", default names, and the first row of observations are "SEX", "PWGTP", "MAR", "SCHL", are *what should be* the columns names. The following code will fix this:
+
+```{r}
+row_length <- nrow(acs_estimates_info)
+
+acs_estimates_info_updated <- tibble("SEX" = acs_estimates_info$V1[2:row_length], "PWGTP" = acs_estimates_info$V2[2:row_length], "MAR" = acs_estimates_info$V3[2:row_length], "SCHL" = acs_estimates_info$V4[2:row_length])
+
+acs_estimates_info_updated
 ```

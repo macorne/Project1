@@ -44,3 +44,34 @@ acs_estimates_info_updated <- tibble("SEX" = acs_estimates_info$V1[2:row_length]
 
 acs_estimates_info_updated
 ```
+
+#### Automating the Process Above
+
+Next we want to automate things. First we define a helper function which will take in a URL that accesses data from the PUMS API, and returns as output a nicely formatted tibble. Note that in the PUMS API, the data is always formatted with the first row consisting of the variable names, so we will need to take this into account for our helper function!
+
+```{r}
+url_to_tibble <- function(url = NULL) {
+    #us url to access data
+    raw_data <- httr::GET(url)
+    
+    #data is given as a JSON file, so we need to parse it with rawToChar
+    #then format it as a tibble
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    base_tib <- as_tibble(parsed_data)
+    
+    m <- nrow(base_tib)
+    n <- ncol(base_tib)
+    
+    #need to change column names of base_tib so that it matches the first row
+    for (i in 1:n) {
+      colnames(base_tib)[i] <- base_tib[[1,i]]
+    }
+    
+    #now get rid of first row since they are not valid observations
+    updated_tib <- base_tib[2:m, ]
+    
+    return (updated_tib)
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+```

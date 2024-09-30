@@ -1,0 +1,66 @@
+---
+title: "Project1"
+name:  "Matt and Isaac"
+date:  "10-02-24"
+format: html
+editor: visual
+---
+
+## Task 1
+
+Build the URL as in the notes, then use GET from the httr package.
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+library("tidyverse")
+library("tidycensus")
+library("jsonlite")
+
+#Example API call
+#api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24&key=YOUR_KEY
+
+#Don't use, but gives some information that could be useful for later development
+#ex_URL <- "https://api.census.gov/data/2022/acs/acs1/pums/variables.json"
+
+#Convert URL to tibble
+
+url_to_tibble <- function(url = NULL) {
+    raw_data <- httr::GET(url)
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    return (tibble(parsed_data))
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+
+```
+
+Build a URL.  Start with a toy model.
+
+```{r}
+load_data_toy <- function(year=2022){
+  if (year %in% -c(2010:2022)){
+    stop("Select a year from 2010 through 2022")
+  }
+    base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
+  return(base)
+}
+
+load_data_toy()
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+
+
+```{r}
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+
+#load_data_pums <- function(geography, AGEP=NULL, PWGTP=1, SEX=NULL, key, year = 2022, show_call = FALSE) {
+# base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
+# if (){ 
+#   message("Using the ACS Data Profile") base <- paste0(base, "/profile") 
+# }
+#}
+```
+

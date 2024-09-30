@@ -75,3 +75,69 @@ url_to_tibble <- function(url = NULL) {
 
 url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
 ```
+
+This works. Now we want to define a function that will query the PUMS API and allows the user to specify:
+
+1.  year of survey (with 2022 being the default year)
+    -   need to verify that the value given is between 2010 and 2022
+2.  the numeric variables to be returned (with AGEP and PWGTP as default, and PWGTP always being returned)
+    -   options for the user should be AGEP, GASP, GRPIP, JWAP (time), JWDP (time), and JWMNP
+
+    -   function needs to turn variables into numeric values or time values where appropriate and check that the variables asked for are in the above set
+
+    -   one numeric variable other than PWGTP must also be returned
+3.  the categorical variables to be returned (with SEX as default)
+    -   options for the user should be FER, HHL, HISPEED, JWAP, JWDP, JWTRNS, SCH, SCHL, and SEX
+
+    -   function needs to turn variables into factors with appropriate levels, where appropriate, and also check that the variables asked for are in the above set
+
+    -   one categorical variable must be returned
+4.  geography level (i.e. All, Region, Division, or STATE, with ALL as default)
+    -   function needs to check that the value specified by the user is in the set above
+5.  an optional argument to subset the data
+    -   user should be able to specify specific Regions, Divisions, or STATES for this part (and only those specified geography levels would be returned)
+
+Here is an attempt....
+
+```{r}
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, list("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste0("https://api.census.gov/data/year/acs/acs1/pums?get=", 
+                     as.character(year))
+  
+  #concatenate base url with other arguments chosen by user
+  updated_url <- cat(base_url, num_vars, cat_vars, geo_lev, sep=",")
+
+  return(updated_url)
+}
+pums_url_builder()
+```

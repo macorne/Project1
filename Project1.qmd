@@ -10,8 +10,6 @@ editor: visual
 
 Build the URL as in the notes, then use GET from the httr package.
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
 library("tidyverse")
 library("tidycensus")
@@ -35,7 +33,41 @@ url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&
 
 ```
 
-Build a URL.  Start with a toy model.
+The tibble returned in url_to_tibble will have variable names "V1", "V2", etc., when instead the variable names should correspond to the entries in the 
+first row of data (and the first row should be deleted since it does not consist of valid observations). Below is an improved url_to_tibble function which renames the variables to the entries in the first row and deletes the first row. 
+
+```{r}
+url_to_tibble <- function(url = NULL) {
+    #us url to access data
+    raw_data <- httr::GET(url)
+    
+    #data is given as a JSON file, so we need to parse it with rawToChar
+    #then format it as a tibble
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    base_tib <- as_tibble(parsed_data)
+    
+    m <- nrow(base_tib)
+    n <- ncol(base_tib)
+    
+    #need to change column names of base_tib so that it matches the first row
+    for (i in 1:n) {
+      colnames(base_tib)[i] <- base_tib[[1,i]]
+    }
+    
+    #now get rid of first row since they are not valid observations
+    updated_tib <- base_tib[2:m, ]
+    
+    return (updated_tib)
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+```
+
+
+
+
+
+#Build a URL.  Start with a toy model.
 
 ```{r}
 load_data_toy <- function(year=2022,SEX=2,AGEP=1,PWGTP=1){

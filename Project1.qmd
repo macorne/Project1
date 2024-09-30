@@ -38,12 +38,27 @@ url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&
 Build a URL.  Start with a toy model.
 
 ```{r}
-load_data_toy <- function(year=2022){
+load_data_toy <- function(year=2022,SEX=2,AGEP=1,PWGTP=1){
   if (year %in% -c(2010:2022)){
     stop("Select a year from 2010 through 2022")
   }
-    base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
-  return(base)
+  base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
+#  return(base)
+  if (SEX %in% -c(1,2)){
+    stop("Select 1 or 2 for SEX")
+  }
+  if (AGEP %in% -c(1:99)){
+    stop("Select a value from 1 through 99 for AGEP")
+  }
+  if (PWGTP %in% -c(1:9999)){
+    stop("Select a value from 1 through 9999 for PWGTP")
+  }
+  base <- paste0(base, "get=", "SEX")
+  URL <- paste(base, "AGEP", "PWGTP", sep = ",")
+  return(URL)
+#  raw_data <- httr::GET(URL)
+#  parsed_data <- fromJSON(rawToChar(raw_data$content))
+#  return (tibble(parsed_data))
 }
 
 load_data_toy()

@@ -28,7 +28,7 @@ library("jsonlite")
 url_to_tibble <- function(url = NULL) {
     raw_data <- httr::GET(url)
     parsed_data <- fromJSON(rawToChar(raw_data$content))
-    return (tibble(parsed_data))
+    return (as_tibble(parsed_data))
 }
 
 url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
@@ -63,8 +63,6 @@ load_data_toy <- function(year=2022,SEX=2,AGEP=1,PWGTP=1){
 
 load_data_toy()
 ```
-
-The `echo: false` option disables the printing of code (only output is displayed).
 
 
 

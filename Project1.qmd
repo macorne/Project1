@@ -10,8 +10,6 @@ editor: visual
 
 Build the URL as in the notes, then use GET from the httr package.
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
 library("tidyverse")
 library("tidycensus")
@@ -28,14 +26,48 @@ library("jsonlite")
 url_to_tibble <- function(url = NULL) {
     raw_data <- httr::GET(url)
     parsed_data <- fromJSON(rawToChar(raw_data$content))
-    return (tibble(parsed_data))
+    return (as_tibble(parsed_data))
 }
 
 url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
 
 ```
 
-Build a URL.  Start with a toy model.
+The tibble returned in url_to_tibble will have variable names "V1", "V2", etc., when instead the variable names should correspond to the entries in the 
+first row of data (and the first row should be deleted since it does not consist of valid observations). Below is an improved url_to_tibble function which renames the variables to the entries in the first row and deletes the first row. 
+
+```{r}
+url_to_tibble <- function(url = NULL) {
+    #us url to access data
+    raw_data <- httr::GET(url)
+    
+    #data is given as a JSON file, so we need to parse it with rawToChar
+    #then format it as a tibble
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    base_tib <- as_tibble(parsed_data)
+    
+    m <- nrow(base_tib)
+    n <- ncol(base_tib)
+    
+    #need to change column names of base_tib so that it matches the first row
+    for (i in 1:n) {
+      colnames(base_tib)[i] <- base_tib[[1,i]]
+    }
+    
+    #now get rid of first row since they are not valid observations
+    updated_tib <- base_tib[2:m, ]
+    
+    return (updated_tib)
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+```
+
+
+
+
+
+#Build a URL.  Start with a toy model.
 
 ```{r}
 load_data_toy <- function(year=2022,chr_vars=c("SEX"),num_vars=c("AGEP","PWGTP")){
@@ -64,8 +96,6 @@ load_data_toy <- function(year=2022,chr_vars=c("SEX"),num_vars=c("AGEP","PWGTP")
 
 load_data_toy()
 ```
-
-The `echo: false` option disables the printing of code (only output is displayed).
 
 
 
@@ -120,3 +150,61 @@ pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
 pums_url_builder()
 ```
 
+My (i.e. Isaac) attempt at the query function.
+
+```{r}
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, list("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+  
+  #concatenate base url with other arguments chosen by user
+  chars <- ""
+  for (i in 1:length(cat_vars)){
+    chars <- paste(chars,cat_vars[i],sep=",")
+  }
+  chars <- substr(chars,2,str_length(chars))
+  updated_url <- paste(base_url,chars,sep="")
+  
+  nums <- ""
+  for (j in 1:length(num_vars)){
+    nums <- paste(nums,num_vars[j],sep=",")
+  }
+  updated_url <- paste(updated_url, nums, sep="")
+  updated_url <- paste(updated_url, geo_lev, sep=",")
+
+  return(updated_url)
+}
+pums_url_builder()
+```
+Matt fixed the query function to generate a URL string, but other functionality will have to be implemented (such as &SCHL=24&key= properties).

@@ -38,12 +38,13 @@ url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&
 Build a URL.  Start with a toy model.
 
 ```{r}
-load_data_toy <- function(year=2022,SEX=2,AGEP=1,PWGTP=1){
+load_data_toy <- function(year=2022,chr_vars=c("SEX"),num_vars=c("AGEP","PWGTP")){
   if (year %in% -c(2010:2022)){
     stop("Select a year from 2010 through 2022")
   }
   base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
 #  return(base)
+  
   if (SEX %in% -c(1,2)){
     stop("Select 1 or 2 for SEX")
   }
@@ -71,11 +72,51 @@ The `echo: false` option disables the printing of code (only output is displayed
 ```{r}
 #https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
 
-#load_data_pums <- function(geography, AGEP=NULL, PWGTP=1, SEX=NULL, key, year = 2022, show_call = FALSE) {
-# base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
-# if (){ 
-#   message("Using the ACS Data Profile") base <- paste0(base, "/profile") 
-# }
-#}
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, list("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste0("https://api.census.gov/data/year/acs/acs1/pums?get=", 
+                     as.character(year))
+  
+  #concatenate base url with other arguments chosen by user
+  for (i in 1:length(cat_vars)){
+    updated_url <- paste(base_url, cat_vars[i], sep=",")
+  }
+  for (j in 1:length(num_vars)){
+    updated_url <- paste(updated_url, num_vars[j], sep=",")
+  }
+  updated_url <- paste(updated_url, geo_lev, sep=",")
+
+  return(updated_url)
+}
+pums_url_builder()
 ```
 

@@ -107,6 +107,58 @@ pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
   if (!(year %in% c(2010:2022))) {
     stop("Year must be between 2010 and 2022!")
   }
+  else if (!all(is.element(num_vars, c("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, c("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data/", as.character(year), "/acs/acs1/pums?get=", sep="")
+  
+  #concatenate user arguments besides year
+  arguments <- paste(num_vars, cat_vars, geo_lev, sep=",")
+  
+  #concatenate base url with arguments
+  updated_url <- cat(base_url, arguments, sep="")
+
+  return(updated_url)
+}
+pums_url_builder()
+```
+
+Here is another attempt due to Matt...
+
+```{r}
+#Need default arguments to build the url below:
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+
+library(stringi)
+
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
   else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
                                           "JWAP", "JWDP", "JWNMP")))) {
     stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
@@ -131,13 +183,119 @@ pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
   }
   
   #base url: contains year only
-  base_url <- paste0("https://api.census.gov/data/year/acs/acs1/pums?get=", 
-                     as.character(year))
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
   
   #concatenate base url with other arguments chosen by user
-  updated_url <- cat(base_url, num_vars, cat_vars, geo_lev, sep=",")
+  chars <- ""
+  for (i in 1:length(cat_vars)){
+    chars <- paste(chars,cat_vars[i],sep=",")
+  }
+  chars <- substr(chars,2,stri_length(chars))
+  updated_url <- paste(base_url,chars,sep="")
+  
+  nums <- ""
+  for (j in 1:length(num_vars)){
+    nums <- paste(nums,num_vars[j],sep=",")
+  }
+  updated_url <- paste(updated_url, nums, sep="")
+  updated_url <- paste(updated_url, geo_lev, sep=",")
 
   return(updated_url)
 }
 pums_url_builder()
+```
+
+I (Isaac) build from the above code, adding an optional user argument, geo_lev_value, which allows the user to subset the data by specific regions, divisions, or states, provided they select the corresponding geography level.
+
+```{r}
+#Need default arguments to build the url below
+#https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX
+#If user wants to specify a geography level (e.g. by state) other than the default
+#then the url should look something like
+#https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX&for=state:* 
+
+library(stringi)
+
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "all", geo_lev_value = NULL) {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, c("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, c("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, c("all", "region", "division", "state"
+                                         )))) {
+    stop("Geography level must be within the set {all, region, division, state}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+  
+  #create a string consisting of the numeric arguments chosen by user, then add 
+  #this to base url
+  nums <- "" #initialize empty string
+  for (i in 1:length(num_vars)){
+    nums <- paste(nums,num_vars[i],sep=",")
+  }
+  nums <- substr(nums, 2, stri_length(nums)) #delete "," in the beginning of nums
+  updated_url <- paste0(base_url, nums)
+  
+  #do same for categorical arguments chose by user
+  chars <- "" #initialize empty string
+  for (i in 1:length(cat_vars)){
+    chars <- paste(chars,cat_vars[i],sep=",")
+  }
+  updated_url <- paste0(updated_url, chars)
+  
+  #concatenate chosen geography level, and value for said level if given
+  if (geo_lev != "All") {
+    updated_url <- paste0(updated_url, "&for=", geo_lev, ":")
+    if (is.null(geo_lev_value) == FALSE) {
+      if (typeof(geo_lev_value) != "character") {
+        stop("Value for geography level must be of the form \"XX\", where X is a number between
+             0 and 9!")
+      }
+      else if (stri_length(geo_lev_value) != 2) {
+        stop("Value for geography level must be of the form \"XX\", where X is a number between
+             0 and 9!")
+      }
+      else if (!(is.element(unlist(strsplit(geo_lev_value, split=""))[1], 0:9) | is.element
+               (unlist(strsplit(geo_lev_value,split=""))[2], 0:9))) {
+        stop("Value for geography level must be of the form \"XX\", where X is a number between
+             0 and 9!")
+      }
+      else {
+        updated_url <- paste0(updated_url, as.character(geo_lev_value)) 
+      }
+    }
+    else if (geo_lev == "all" & is.null(geo_lev_value) == FALSE) {
+      stop("You cannot specify a geography level value without picking a specific geography 
+           level (i.e. region, division, or state.")
+    }
+    else {
+      updated_url <- paste0(updated_url, "*")
+    }
+  }
+
+  return(updated_url)
+}
+pums_url_builder(geo_lev = "region", geo_lev_value = "01")
 ```

@@ -404,6 +404,40 @@ num_fxn <- function(...){
   }
 }
 # function call
-build_url()
+built_url <- build_url()
+built_url
 
+#url_to_tibble <- function(url = NULL) {
+#    raw_data <- httr::GET(url)
+#    parsed_data <- fromJSON(rawToChar(raw_data$content))
+#    return (as_tibble(parsed_data))
+#}
+
+#url_to_tibble(built_url)
+
+```
+
+
+```{r}
+vars <- load_variables(year=2022,
+                       dataset="acs1",
+                       cache=FALSE)
+view(vars) #Allows to view the entire tibble
+
+#rent <- "DP04_0142PE" #PE means percentage
+#example_data <- get_acs(variables = c("SEX","AGEP","PWGTP"),
+# geography = "Region",
+# geometry = TRUE,# returns the polygon data and allows for maps easily
+# survey = "acs1",
+# show_call = TRUE)
+#example_data
+```
+
+```{r}
+rent <- "DP04_0142PE" #PE means percentage
+rent_data <- get_acs(variables = "DP02_0001E",
+ geography = "state",
+ geometry = TRUE,# returns the polygon data and allows for maps easily
+ survey = "acs1",
+ show_call = TRUE) #can add state and other things
 ```

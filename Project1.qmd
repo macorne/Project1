@@ -252,6 +252,7 @@ ex_fn <- function(year=2022,...,GEO="All"){
 
 ex_fn(year=2020,GEO="state")
 ```
+
 ```{r}
 #vec <- c(1,2)
 #foovec <- function(...){c(...)}
@@ -379,4 +380,3 @@ num_fxn <- function(...){
 build_url()
 
 ```
-

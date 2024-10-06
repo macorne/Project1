@@ -122,8 +122,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  $ all_headers:List of 1
  $ cookies    :'data.frame':    1 obs. of  7 variables:
  $ content    : raw [1:937508] 5b 5b 22 53 ...
- $ date       : POSIXct[1:1], format: "2024-10-03 22:17:08"
- $ times      : Named num [1:6] 0 0.00265 0.10329 0.34115 0.70316 ...
+ $ date       : POSIXct[1:1], format: "2024-10-05 15:44:46"
+ $ times      : Named num [1:6] 0 0.0018 0.2544 0.4302 0.7992 ...
   ..- attr(*, "names")= chr [1:6] "redirect" "namelookup" "connect" "pretransfer" ...
  $ request    :List of 7
   ..- attr(*, "class")= chr "request"
@@ -468,6 +468,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX&amp;for=region:01"</code></pre>
 </div>
+</div>
+<p>Lastly, we want to create a function that allows the user to specify multiple years of survey data, and all other options from the pums_url_builder function.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>join_two_tibbles <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">years =</span> <span class="fu">c</span>(<span class="dv">2021</span>,<span class="dv">2022</span>), <span class="at">num_vars =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">"AGEP"</span>, <span class="st">"PWGTP"</span>), <span class="fu">c</span>(<span class="st">"AGEP"</span>, <span class="st">"PWGTP"</span>)), <span class="at">cat_vars =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">"SEX"</span>), <span class="fu">c</span>(<span class="st">"SEX"</span>)), <span class="at">geo_lev =</span> <span class="fu">list</span>(<span class="st">"all"</span>, <span class="st">"all"</span>), <span class="at">geo_lev_value =</span> <span class="fu">list</span>(<span class="cn">NULL</span>, <span class="cn">NULL</span>)) {</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 </section>

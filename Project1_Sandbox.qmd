@@ -9,6 +9,7 @@ editor: visual
 Build the URL as in the notes, then use GET from the httr package.
 
 ```{r}
+library("dplyr")
 library("tidyverse")
 library("tidycensus")
 library("jsonlite")
@@ -295,7 +296,7 @@ pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
   return(updated_url)
 }
 
-pums_url_builder(geo_lev = "region", geo_lev_value = "01")
+#pums_url_builder(geo_lev = "region", geo_lev_value = "01")
 
 join_tibbles <- function(years = list(...), num_var_list = 
                                list(c("AGEP", "PWGTP"), c("AGEP", "PWGTP")),
@@ -308,10 +309,10 @@ join_tibbles <- function(years = list(...), num_var_list =
     }
   }
   
-  tibble_1 <- url_to_tibble(pums_url_builder(year = years[[1]], num_var_list[[1]] = num_vars,
+  tibble_1 <- url_to_tibble(pums_url_builder(years[[1]] = years, num_var_list[[1]] = num_vars,
                             cat_var_list[[1]] = cat_vars, geo_lev_list[[1]] = geo_lev,
                             geo_lev_value_list[[1]] = geo_lev_value))
-  tibble_2 <- url_to_tibble(pums_url_builder(year = years[[2]], num_var_list[[2]] = num_vars,
+  tibble_2 <- url_to_tibble(pums_url_builder(years[[2]] = years, num_var_list[[2]] = num_vars,
                             cat_var_list[[2]] = cat_vars, geo_lev_list[[2]] = geo_lev,
                             geo_lev_value_list[[2]] = geo_lev_value))
  
@@ -497,7 +498,6 @@ build_url <- function(cat_vars=list(),num_vars=list(),...,year=2022,GEO="All"){
   updated_url <- paste(updated_url, nums, sep="")
   
   return(updated_url)
-  
 #  strng <- paste(base_url,cat_vars,num_vars,num_dflts,GEO,sep=",")
 #  return(strng)
 }
@@ -528,13 +528,26 @@ num_fxn <- function(...){
 built_url <- build_url(list("FER"),list("GASP"))
 built_url
 
-#url_to_tibble <- function(url = NULL) {
-#    raw_data <- httr::GET(url)
-#    parsed_data <- fromJSON(rawToChar(raw_data$content))
+url_to_tibble <- function(url = NULL) {
+    raw_data <- httr::GET(url)
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    parsed_tibble <- as_tibble(parsed_data)
 #    return (as_tibble(parsed_data))
-#}
+    parsed_tibble <- mutate(year = year)
+    return(as_tibble(parsed_data))
+}
 
-#url_to_tibble(built_url)
+url_to_tibble(built_url)
+
+concatenate_tibbles <- function(years = list(...)){
+  for (year in years){
+    tibble <- url_to_tibble()
+  }
+ 
+  return(tibbles)
+}
+
+tibbles
 
 ```
 
@@ -561,3 +574,47 @@ rent_data <- get_acs(variables = "DP02_0001E",
  survey = "acs1",
  show_call = TRUE) #can add state and other things
 ```
+```{r}
+library(dplyr)
+years <- c(2021:2022)
+nc_pums <- list()
+for (i in 1:length(years)){
+  nc_pums[[i]] <- get_pums(
+    variables = c("PUMA", "SEX", "AGEP", "JWAP", "JWDP", "SCHL"),
+    state = "NC",
+    survey = "acs1",
+    year = years[i]
+  ) |> mutate(year = years[i])
+}
+
+example <- data.table::rbindlist(nc_pums)
+view(example)
+```
+```{r}
+#get the JWAP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWAP and their values
+JWAP <- temp_list$values$item
+#reorder just so it is clearer
+JWAP_values <- JWAP[sort(names(JWAP))]
+#JWAP_values[[280]]
+
+for (i in 2:length(JWAP_values)){
+  if (!is.na(JWAP_values[[i]])){
+    numbers <- gregexpr("[0-9]+:[0-9]+", JWAP_values[[i]])
+    JWAP_values[[i]] <- regmatches(JWAP_values[[i]], numbers)
+    result <- list()
+    for (j in 1:length(JWAP_values[[i]][[1]])){
+      result[[j]] <- gsub(":","",JWAP_values[[i]][[1]][[j]])
+    }
+# Convert to numeric
+  JWAP_values[[i]] <- as.numeric(unlist(result))
+  JWAP_values[[i]] <- mean(JWAP_values[[i]][1],JWAP_values[[i]][2])
+  }
+}
+
+JWAP_values[[280]]
+```
+

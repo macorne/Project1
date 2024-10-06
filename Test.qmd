@@ -1,0 +1,367 @@
+---
+title: "Test"
+author: "Isaac's Code"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Querying Census API
+
+The goal of this project is to query the "Public Use Microdata Sample" (PUMS) API from the Census Bureau. We do this by first building the URL to contact a particular endpoint of the PUMS API. In particular, we will go with the example call provided in the PUMS API under their most recent year, 2022, which we store as a string.
+
+```{r}
+URL_pums <- "https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24"
+```
+
+Next we use the `httr::GET()` function to contact the website and explore its structure.
+
+```{r}
+pums_info <- httr::GET(URL_pums)
+str(pums_info, max.level = 1)
+```
+
+This is a lot of information and not very clear or readable, so we will use the `jsonlite` package to parse this data.
+
+```{r}
+library(jsonlite)
+library(tibble)
+
+#parse data using rawToChar() function 
+parsed <- fromJSON(rawToChar(pums_info$content))
+
+#turn parsed data into nice tibble
+acs_estimates_info <- as_tibble(parsed)
+
+acs_estimates_info
+```
+
+This is not quite what we want because the column names are "V1", "V2", "V3", "V4", default names, and the first row of observations are "SEX", "PWGTP", "MAR", "SCHL", are *what should be* the columns names. The following code will fix this:
+
+```{r}
+row_length <- nrow(acs_estimates_info)
+
+acs_estimates_info_updated <- tibble("SEX" = acs_estimates_info$V1[2:row_length], "PWGTP" = acs_estimates_info$V2[2:row_length], "MAR" = acs_estimates_info$V3[2:row_length], "SCHL" = acs_estimates_info$V4[2:row_length])
+
+acs_estimates_info_updated
+```
+
+#### Automating the Process Above
+
+Next we want to automate things. First we define a helper function which will take in a URL that accesses data from the PUMS API, and returns as output a nicely formatted tibble. Note that in the PUMS API, the data is always formatted with the first row consisting of the variable names, so we will need to take this into account for our helper function!
+
+```{r}
+library(tidyverse)
+
+url_to_tibble <- function(url = NULL, year = 2022) {
+    #us url to access data
+    raw_data <- httr::GET(url)
+    
+    #data is given as a JSON file, so we need to parse it with rawToChar
+    #then format it as a tibble
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    base_tib <- as_tibble(parsed_data)
+    
+    m <- nrow(base_tib)
+    n <- ncol(base_tib)
+    
+    #need to change column names of base_tib so that it matches the first row
+    for (i in 1:n) {
+      colnames(base_tib)[i] <- base_tib[[1,i]]
+    }
+    
+    #now get rid of first row since they are not valid observations
+    updated_tib <- base_tib[2:m, ]
+    
+    final_tib <- updated_tib |> 
+      mutate(YEAR = as.character(year)) |> 
+      select(YEAR, everything())
+    
+    return (final_tib)
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+```
+
+This works. Now we want to define a function that will query the PUMS API and allows the user to specify:
+
+1.  year of survey (with 2022 being the default year)
+    -   need to verify that the value given is between 2010 and 2022
+2.  the numeric variables to be returned (with AGEP and PWGTP as default, and PWGTP always being returned)
+    -   options for the user should be AGEP, GASP, GRPIP, JWAP (time), JWDP (time), and JWMNP
+
+    -   function needs to turn variables into numeric values or time values where appropriate and check that the variables asked for are in the above set
+
+    -   one numeric variable other than PWGTP must also be returned
+3.  the categorical variables to be returned (with SEX as default)
+    -   options for the user should be FER, HHL, HISPEED, JWAP, JWDP, JWTRNS, SCH, SCHL, and SEX
+
+    -   function needs to turn variables into factors with appropriate levels, where appropriate, and also check that the variables asked for are in the above set
+
+    -   one categorical variable must be returned
+4.  geography level (i.e. All, Region, Division, or STATE, with ALL as default)
+    -   function needs to check that the value specified by the user is in the set above
+5.  an optional argument to subset the data
+    -   user should be able to specify specific Regions, Divisions, or STATES for this part (and only those specified geography levels would be returned)
+
+Here is an attempt....
+
+```{r}
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, c("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, c("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data/", as.character(year), "/acs/acs1/pums?get=", sep="")
+  
+  #concatenate user arguments besides year
+  arguments <- paste(num_vars, cat_vars, geo_lev, sep=",")
+  
+  #concatenate base url with arguments
+  updated_url <- cat(base_url, arguments, sep="")
+
+  return(updated_url)
+}
+pums_url_builder()
+```
+
+Here is another attempt due to Matt...
+
+```{r}
+#Need default arguments to build the url below:
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+
+library(stringi)
+
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, list("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+  
+  #concatenate base url with other arguments chosen by user
+  chars <- ""
+  for (i in 1:length(cat_vars)){
+    chars <- paste(chars,cat_vars[i],sep=",")
+  }
+  chars <- substr(chars,2,stri_length(chars))
+  updated_url <- paste(base_url,chars,sep="")
+  
+  nums <- ""
+  for (j in 1:length(num_vars)){
+    nums <- paste(nums,num_vars[j],sep=",")
+  }
+  updated_url <- paste(updated_url, nums, sep="")
+  updated_url <- paste(updated_url, geo_lev, sep=",")
+
+  return(updated_url)
+}
+pums_url_builder()
+```
+
+I (Isaac) build from the above code, adding an optional user argument, geo_lev_value, which allows the user to subset the data by specific regions, divisions, or states, provided they select the corresponding geography level.
+
+```{r}
+#Need default arguments to build the url below
+#https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX
+#If user wants to specify a geography level (e.g. by state) other than the default
+#then the url should look something like
+#https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX&for=state:* 
+
+library(stringi)
+
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "all", geo_lev_value = NULL) {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, c("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, c("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, c("all", "region", "division", "state"
+                                         )))) {
+    stop("Geography level must be within the set {all, region, division, state}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+  
+  #create a string consisting of the numeric arguments chosen by user, then add 
+  #this to base url
+  nums <- "" #initialize empty string
+  for (i in 1:length(num_vars)){
+    nums <- paste(nums,num_vars[i],sep=",")
+  }
+  nums <- substr(nums, 2, stri_length(nums)) #delete "," in the beginning of nums
+  updated_url <- paste0(base_url, nums)
+  
+  #do same for categorical arguments chose by user
+  chars <- "" #initialize empty string
+  for (i in 1:length(cat_vars)){
+    chars <- paste(chars,cat_vars[i],sep=",")
+  }
+  updated_url <- paste0(updated_url, chars)
+  
+  #concatenate chosen geography level, and value for said level if given
+  if (geo_lev != "All") {
+    updated_url <- paste0(updated_url, "&for=", geo_lev, ":")
+    if (is.null(geo_lev_value) == FALSE) {
+      if (typeof(geo_lev_value) != "character") {
+        stop("Value for geography level must be of the form \"XX\", where X is a number between
+             0 and 9!")
+      }
+      else if (stri_length(geo_lev_value) != 2) {
+        stop("Value for geography level must be of the form \"XX\", where X is a number between
+             0 and 9!")
+      }
+      else if (!(is.element(unlist(strsplit(geo_lev_value, split=""))[1], 0:9) | is.element
+               (unlist(strsplit(geo_lev_value,split=""))[2], 0:9))) {
+        stop("Value for geography level must be of the form \"XX\", where X is a number between
+             0 and 9!")
+      }
+      else {
+        updated_url <- paste0(updated_url, as.character(geo_lev_value)) 
+      }
+    }
+    else if (geo_lev == "all" & is.null(geo_lev_value) == FALSE) {
+      stop("You cannot specify a geography level value without picking a specific geography 
+           level (i.e. region, division, or state.")
+    }
+    else {
+      updated_url <- paste0(updated_url, "*")
+    }
+  }
+
+  return(updated_url)
+}
+pums_url_builder(geo_lev = "region", geo_lev_value = "01")
+```
+
+Lastly, we want to create a function that allows the user to specify multiple years of survey data, and all other options from the pums_url_builder function, which will then call the url_to_tibble function to create tibbles for each year, and then combine those tibbles into one big one and output that.
+
+```{r}
+pums_big_tib <- function(years) {
+  num_question_by_year <- c()
+  num_vars_by_year <- list()
+  cat_question_by_year <- c()
+  cat_vars_by_year <- list()
+  geo_lev_by_year <- c()
+  geo_question_by_year <- c()
+  geo_lev_value_by_year <- c()
+  
+  list_of_urls <- list()
+  list_of_tibbles <- list()
+  
+  for (i in years) {
+    num_question_by_year[i] <- readline(paste0("How many numerical variables do you want to query for year ", i, "? Enter a positive integer: "))
+    num_input <- c()
+    for (j in 1:num_question_by_year[i]) {
+      num_input[j] <- readline(paste0("Enter a numerical value for year ", i, ": "))
+    }
+    num_vars_by_year[[i]] <- num_input
+    
+    cat_question_by_year[i] <- readline(paste0("How many categorical variables do you want to query for year ", i, "? Enter a positive integer: "))
+    cat_input <- c()
+    for (j in 1:cat_question_by_year[i]) {
+      cat_input[j] <- readline(paste0("Enter a categorical value for year ", i, ": "))
+    }
+    cat_vars_by_year[[i]] <- cat_input
+    
+    geo_lev_by_year[i] = readline(paste0("Enter a geography level for year ", i, 
+                                         ": "))
+    geo_question_by_year[i] = readline("Would you like to also enter a value for 
+                                       the geography level for this year? Enter
+                                       \'yes\' or \'no\': ")
+    if (geo_question_by_year[i] == "yes") {
+      geo_lev_value_by_year[i] = readline(paste0("Enter a value for the geography
+                                                  level for year ", i, ": "))
+    }
+    else {
+      geo_lev_value_by_year[i] = NULL
+    }
+    list_of_urls[[i]] <- pums_url_builder(year = i, num_vars = 
+                                              num_vars_by_year[[i]], 
+                                            cat_vars = cat_vars_by_year[[i]], 
+                                            geo_lev = geo_lev_by_year[i], 
+                                            geo_lev_value = 
+                              geo_lev_value_by_year[i])
+    list_of_tibbles[[i]] <- url_to_tibble(list_of_urls[[i]], i)
+  }
+  
+  big_tib <- bind_rows(list_of_tibbles)
+
+  return (big_tib)
+}
+pums_big_tib(c(2010,2011))
+```

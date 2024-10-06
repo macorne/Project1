@@ -1,0 +1,382 @@
+---
+title: "Project1"
+name:  "Matt and Isaac"
+date:  "10-02-24"
+format: html
+editor: visual
+---
+
+## Task 1
+
+Build the URL as in the notes, then use GET from the httr package.
+
+```{r}
+library("tidyverse")
+library("tidycensus")
+library("jsonlite")
+
+#Example API call
+#api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24&key=YOUR_KEY
+
+#Don't use, but gives some information that could be useful for later development
+#ex_URL <- "https://api.census.gov/data/2022/acs/acs1/pums/variables.json"
+
+#Convert URL to tibble
+
+url_to_tibble <- function(url = NULL) {
+    raw_data <- httr::GET(url)
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    return (as_tibble(parsed_data))
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+
+```
+
+The tibble returned in url_to_tibble will have variable names "V1", "V2", etc., when instead the variable names should correspond to the entries in the first row of data (and the first row should be deleted since it does not consist of valid observations). Below is an improved url_to_tibble function which renames the variables to the entries in the first row and deletes the first row.
+
+```{r}
+url_to_tibble <- function(url = NULL) {
+    #us url to access data
+    raw_data <- httr::GET(url)
+    
+    #data is given as a JSON file, so we need to parse it with rawToChar
+    #then format it as a tibble
+    parsed_data <- fromJSON(rawToChar(raw_data$content))
+    base_tib <- as_tibble(parsed_data)
+    
+    m <- nrow(base_tib)
+    n <- ncol(base_tib)
+    
+    #need to change column names of base_tib so that it matches the first row
+    for (i in 1:n) {
+      colnames(base_tib)[i] <- base_tib[[1,i]]
+    }
+    
+    #now get rid of first row since they are not valid observations
+    updated_tib <- base_tib[2:m, ]
+    
+    return (updated_tib)
+}
+
+url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
+```
+
+```{r}
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+
+pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
+                             cat_vars = c("SEX"), geo_lev = "All") {
+  
+  #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, list("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste0("https://api.census.gov/data/year/acs/acs1/pums?get=", 
+                     as.character(year))
+  
+  #concatenate base url with other arguments chosen by user
+  for (i in 1:length(cat_vars)){
+    updated_url <- paste(base_url, cat_vars[i], sep=",")
+  }
+  for (j in 1:length(num_vars)){
+    updated_url <- paste(updated_url, num_vars[j], sep=",")
+  }
+  updated_url <- paste(updated_url, geo_lev, sep=",")
+
+  return(updated_url)
+}
+pums_url_builder()
+```
+
+My (i.e. Isaac) attempt at the query function.
+
+```{r}
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+
+pums_url_builder <- function(year = 2022, variables= c(num_vars,cat_vars), 
+                             geo_lev = "All") {
+  
+  #verify user input is valid
+  num_vars <- c("AGEP", "PWGTP")
+  cat_vars <- c("SEX")
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  else if (!all(is.element(num_vars, list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP")))) {
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
+    if (!(is.element("PWGTP", num_vars))) {
+      stop("PWGTP must always be included!")
+    }
+  }
+  else if (!all(is.element(cat_vars, list("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
+                                          )))) {
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
+    if (length(cat_vars) == 0) {
+      stop("At least one categorical variable must be returned!")
+    }
+  }
+  else if (!all(is.element(geo_lev, list("All", "Region", "Division", "STATE"
+                                         )))) {
+    stop("Geography level must be within the set {All, Region, Division, State}
+         .")
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+  
+  #concatenate base url with other arguments chosen by user
+  chars <- ""
+  for (i in 1:length(cat_vars)){
+    chars <- paste(chars,cat_vars[i],sep=",")
+  }
+  chars <- substr(chars,2,str_length(chars))
+  updated_url <- paste(base_url,chars,sep="")
+  
+  nums <- ""
+  for (j in 1:length(num_vars)){
+    nums <- paste(nums,num_vars[j],sep=",")
+  }
+  updated_url <- paste(updated_url, nums, sep="")
+  updated_url <- paste(updated_url, geo_lev, sep=",")
+
+  return(updated_url)
+}
+pums_url_builder()
+```
+
+```{r}
+#https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
+#Matt attempt
+#Would use a prompting system for user to build URL
+#https://www.geeksforgeeks.org/taking-input-from-user-in-r-programming/
+
+# R program to illustrate
+# taking input from the user
+ 
+# taking multiple inputs
+# using braces 
+#ex_url_bldr <- function(year=2022, variables){
+#    var1 = readline("Enter 1st variable : ");
+#    var2 = readline("Enter 2nd variable : ");
+#    var3 = readline("Enter 3rd variable : ");
+    
+#    base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+    
+#    var_piece <- paste(var1,var2,var3,sep=",")
+    
+#    ex_url <- paste(base_url,var_piece)
+#    ex_url <- gsub(" ","",ex_url)
+    
+#    return(ex_url)
+#}
+
+#ex_url_bldr()
+```
+
+```{r}
+ex_fn <- function(year=2022,...,GEO="All"){
+  vars <- list(...)
+#  vars[[1]] <- c(SEX=NA)
+#  vars[[2]] <- c(AGEP="",PWGTP="")
+#  vars[[3]] <- c(year=2022)
+#  vars[[4]] <- c(GEO="All")
+  
+  vars[[1]] <- c(c("SEX"),c(...)) #cat_vars
+  vars[[2]] <- c(c("AGEP","PWGTP"),c(...)) #num_vars
+#  vars[[3]] <- c(year)
+#  vars[[4]] <- c(GEO="All")
+  
+    #verify user input is valid
+  if (!(year %in% c(2010:2022))) {
+    stop("Year must be between 2010 and 2022!")
+  }
+  
+  for (x in vars[[1]]){
+    if (!(x %in% c("FER", "HHL", "HISPEED", "JWAP", 
+                                          "JWDP", "JWTRNS", "SCH", "SCHL", 
+                      "SEX", "GEO"
+    ))){"Character variable must be among FER, HHL, HISPEED, JWAP, 
+                                          JWDP, JWTRNS, SCH, SCHL, SEX, GEO"
+                                          }
+  }
+  
+  #base url: contains year only
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
+  
+  #concatenate base url with other arguments chosen by user
+  chars <- ""
+  for (i in 1:length(vars[[1]])){
+    chars <- paste(chars,vars[[1]][i],sep=",")
+  }
+  chars <- substr(chars,2,str_length(chars))
+  updated_url <- paste(base_url,chars,sep="")
+  
+  nums <- ""
+  for (j in 1:length(vars[[2]])){
+    nums <- paste(nums,vars[[2]][j],sep=",")
+  }
+  updated_url <- paste(updated_url, nums, sep="")
+  updated_url <- paste(updated_url, GEO, sep=",")
+
+  return(updated_url)
+}
+
+ex_fn(year=2020,GEO="state")
+```
+
+```{r}
+#vec <- c(1,2)
+#foovec <- function(...){c(...)}
+#c(vec,foovec(3,4))
+
+#foo <- function(...){
+#  foovec <- c(...)
+#  vec <- c(1,2)
+#  return(c(vec,foovec))
+#}
+#foo(3,4)
+
+#foo <- function(...,year=2022,GEO="All"){
+#  year <- 2022
+#  GEO <- "All"
+#  vars <- list()
+#  vars[[1]] <- list(...)
+#  vars[[2]] <- vars[-c(1,length(vars[[1]]))]
+  
+#  if (!(year %in% 2010:2022)){
+#    stop("Year must be from 2010 through 2022")
+#  }
+#  for (x in vars[[1]]){
+#    if (!((x %in% c("A","B","C")) | missing(x))){
+#    stop("Character variables must be one of A, B, or C or not specified")
+#    }
+#  }
+#  for (y in vars[[2]]){
+#    if (!((y %in% c(1,2,3)) | missing(y))){
+#    stop("Numeric variables must be one of 1, 2, or 3 or not specified")
+#    }
+#  }
+#  strng <- paste(as.character(year),x,GEO, sep=" ")
+#  return(strng)
+#}
+#foo()
+```
+
+```{r}
+#Trying a suggestion to build a URL from 
+#https://stackoverflow.com/questions/5080972/using-multiple-ellipses-arguments-in-r
+#Only problems:  (1) Have to write list() to input categorical and numerical variables
+#(2) Doesn't have the '&' separators for things like KEY=
+#(3) Order within the URL might not be right for the query
+
+build_url <- function(cat_vars=list(),num_vars=list(),...,year=2022,GEO="All"){
+  if (!(year %in% 2010:2022)){
+    stop("Year must be from 2010 through 2022")
+  }
+  if (!(GEO %in% list("region","division","state","All"))){
+    stop("GEO must be one of region, division, state, or all")
+  }
+  do.call(cat_fxn, cat_vars)
+  do.call(num_fxn, num_vars)
+  cat_dflts <- c("SEX")
+  num_dflts <- c("AGEP","PWGTP")
+  
+  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", 
+                    "acs1", "pums?get=", sep="/")
+  
+  for (k in 1:length(cat_dflts)){
+    cat_dflts2 <- paste(cat_dflts[k], sep=",")
+  }
+  
+  updated_url <- paste(base_url,cat_dflts2,sep="")
+  
+  for (l in 1:length(num_dflts)){
+    updated_url <- paste(updated_url, num_dflts[l], sep=",")
+  }
+  
+  updated_url <- paste(updated_url, GEO, sep=",")
+  
+  chars <- ""
+  for (i in 1:length(cat_vars)){
+    if (length(cat_vars) < 1){
+      break
+    }
+    else{
+      chars <- paste(chars,cat_vars[i],sep=",")
+    }
+  }
+#  chars <- substr(chars,2,str_length(chars))
+  updated_url <- paste(updated_url,chars,sep="")
+  
+  nums <- ""
+  for (j in 1:length(num_vars)){
+    if (length(num_vars) < 1){
+      break
+    }
+    else {
+      nums <- paste(nums,num_vars[j],sep=",")
+    }
+  }
+  updated_url <- paste(updated_url, nums, sep="")
+  
+  return(updated_url)
+  
+#  strng <- paste(base_url,cat_vars,num_vars,num_dflts,GEO,sep=",")
+#  return(strng)
+}
+
+cat_fxn <- function(...){
+  cat_vars <- list(...)
+  for (x in cat_vars){
+    if (!(x %in% list("FER", "HHL", "HISPEED", "JWAP", "JWDP", "JWTRNS", 
+                           "SCH", "SCHL", "SEX", "GEO"))){
+    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
+         JWDP, JWTRNS, SCH, SCHL, SEX, GEO} and cannot be empty.")
+    }
+  }  
+}
+
+num_fxn <- function(...){
+  num_vars <- list(...)
+  for (y in num_vars){
+    if (!(y %in% list("AGEP", "PWGTP", "GASP", "GRPIP", 
+                                          "JWAP", "JWDP", "JWNMP"))){
+    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
+         JWAP, JWDP, JWNMP}; PWGTP is always returned, and one numeric variable 
+         besides PWGTP must be included.")
+    }
+  }
+}
+# function call
+build_url()
+
+```

@@ -634,6 +634,7 @@ JWAP_values[[280]][[1]]
 ```
 
 ```{r}
+library(lubridate)
 #get the JWAP info
 temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
 #turn it into a list
@@ -659,12 +660,11 @@ for (i in 2:length(JWAP_values)){
 # Convert to numeric
   JWAP_values[[i]] <- as.numeric(unlist(result))
   
-# Find the midpoint value of the times
-  JWAP_values[[i]] <- (JWAP_values[[i]][[1]]+JWAP_values[[i]][[2]])/2
+# Find the midpoint value (mpt) of the times
+  mpt <- JWAP_values[[i]] <- seconds_to_period((JWAP_values[[i]][[1]]+JWAP_values[[i]][[2]])/2)
   
-# Convert to seconds
-#  JWAP_values[[i]] <- as.character(JWAP_values[[i]])
-#  JWAP_values[[i]] <- lapply(strsplit(JWAP_values[[i]], ""), head, -2)
+# Convert to HH:MM:SS format
+  JWAP_values[[i]] <- sprintf('%02d:%02d', mpt@hour, minute(mpt))
   }
 }
 
@@ -697,12 +697,13 @@ for (i in 2:length(JWDP_values)){
 # Convert to numeric
   JWDP_values[[i]] <- as.numeric(unlist(result))
   
-# Find the midpoint value of the times
-  JWDP_values[[i]] <- (JWDP_values[[i]][[1]]+JWDP_values[[i]][[2]])/2
+# Find the midpoint value (mpt) of the times
+  mpt <- JWDP_values[[i]] <- seconds_to_period((JWDP_values[[i]][[1]]+JWDP_values[[i]][[2]])/2)
+  
+# Convert to HH:MM:SS format
+  JWDP_values[[i]] <- sprintf('%02d:%02d', mpt@hour, minute(mpt))
   }
 }
-
-JWDP_values
 
 ```
 

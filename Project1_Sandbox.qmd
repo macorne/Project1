@@ -599,6 +599,10 @@ temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
 JWAP <- temp_list$values$item
 #reorder just so it is clearer
 JWAP_values <- JWAP[sort(names(JWAP))]
+#JWAP_values
+
+#nmbrs <- gregexpr("[0-9]+:[0-9]+", JWAP_values[[280]])
+#JWAP_values[[280]] <- regmatches(JWAP_values[[280]], nmbrs)
 #JWAP_values[[280]]
 
 for (i in 2:length(JWAP_values)){
@@ -610,11 +614,96 @@ for (i in 2:length(JWAP_values)){
       result[[j]] <- gsub(":","",JWAP_values[[i]][[1]][[j]])
     }
 # Convert to numeric
-  JWAP_values[[i]] <- as.numeric(unlist(result))
-  JWAP_values[[i]] <- mean(JWAP_values[[i]][1],JWAP_values[[i]][2])
+#  JWAP_values[[i]] <- as.numeric(unlist(result))
+  
+# Find the midpoint value of the times
+#  JWAP_values[[i]] <- mean(JWAP_values[[i]][1],JWAP_values[[i]][2])
+  
+# Convert to seconds
+#  JWAP_values[[i]] <- as.character(JWAP_values[[i]])
+#  JWAP_values[[i]] <- lapply(strsplit(JWAP_values[[i]], ""), head, -2)
   }
 }
 
-JWAP_values[[280]]
+JWAP_values[[280]][[1]]
+
+#Time1 <- 
+#format(as.POSIXct(Time1,format='%I:%M %p'),format="%H:%M:%S")
+#typeof(JWAP_values[[280]][[1]][[1]])
+#3600*as.numeric(gsub(" ","",paste(JWAP_values[[280]][[1]][[1]],JWAP_values[[280]][[1]][[2]])))
 ```
+
+```{r}
+#get the JWAP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWAP and their values
+JWAP <- temp_list$values$item
+#reorder just so it is clearer
+JWAP_values <- JWAP[sort(names(JWAP))]
+#JWAP_values
+
+# Modify the entries to extract times from them
+for (i in 2:length(JWAP_values)){
+  if (!is.na(JWAP_values[[i]])){
+    numbers <- gregexpr("[0-9]+:[0-9]+ [a-z]+.[a-z].", JWAP_values[[i]])
+    JWAP_values[[i]] <- regmatches(JWAP_values[[i]], numbers)
+    
+    result <- list()
+    for (j in 1:length(JWAP_values[[i]][[1]])){
+      result[[j]] <- toupper(gsub(".","",JWAP_values[[i]][[1]][[j]],fixed=TRUE))
+      result[[j]] <- strftime(as.POSIXct(strptime(result[[j]], format = "%I:%M %p")), format = "%H:%M")
+      result[[j]] <- sapply(strsplit(result[[j]], ":"), function(n) as.numeric(n) %*% c(3600, 60))
+    }
+# Convert to numeric
+  JWAP_values[[i]] <- as.numeric(unlist(result))
+  
+# Find the midpoint value of the times
+  JWAP_values[[i]] <- (JWAP_values[[i]][[1]]+JWAP_values[[i]][[2]])/2
+  
+# Convert to seconds
+#  JWAP_values[[i]] <- as.character(JWAP_values[[i]])
+#  JWAP_values[[i]] <- lapply(strsplit(JWAP_values[[i]], ""), head, -2)
+  }
+}
+
+JWAP_values
+
+```
+```{r}
+#get the JWDP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWDP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWDP and their values
+JWDP <- temp_list$values$item
+#reorder just so it is clearer
+JWDP_values <- JWDP[sort(names(JWDP))]
+#JWDP_values
+
+# Modify the entries to extract times from them
+for (i in 2:length(JWDP_values)){
+  if (!is.na(JWDP_values[[i]])){
+    numbers <- gregexpr("[0-9]+:[0-9]+ [a-z]+.[a-z].", JWDP_values[[i]])
+    JWDP_values[[i]] <- regmatches(JWDP_values[[i]], numbers)
+    
+    result <- list()
+    for (j in 1:length(JWDP_values[[i]][[1]])){
+      result[[j]] <- toupper(gsub(".","",JWDP_values[[i]][[1]][[j]],fixed=TRUE))
+      result[[j]] <- strftime(as.POSIXct(strptime(result[[j]], format = "%I:%M %p")), format = "%H:%M")
+      result[[j]] <- sapply(strsplit(result[[j]], ":"), function(n) as.numeric(n) %*% c(3600, 60))
+    }
+# Convert to numeric
+  JWDP_values[[i]] <- as.numeric(unlist(result))
+  
+# Find the midpoint value of the times
+  JWDP_values[[i]] <- (JWDP_values[[i]][[1]]+JWDP_values[[i]][[2]])/2
+  }
+}
+
+JWDP_values
+
+```
+
 

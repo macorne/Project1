@@ -1,0 +1,294 @@
+---
+title: "JSON_Chunks"
+format: html
+editor: visual
+---
+
+# Load Libraries
+
+```{r}
+
+library("dplyr")
+library("jsonlite")
+library("lubridate")
+library("stringi")
+library("tidyverse")
+library("tidycensus")
+
+```
+# Numerical Variables
+
+## AGEP - Age
+
+```{r}
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/AGEP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+temp_list
+#grab just the names of GRPIP and their values
+AGEP <- temp_list$values$item
+AGEP
+```
+
+## PWGTP - PUMS person weight
+
+```{r}
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/PWGTP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+temp_list
+
+```
+
+## GASP - Gas cost (monthly cost, use ADJHSG to adjust GASP to constant dollars)
+
+```{r}
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/GASP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+temp_list
+#grab just the names of GASP and their values
+GASP <- temp_list$values$item
+#GASP
+
+```
+
+## GRPIP - Gross rent as a percentage of household income past 12 months
+
+```{r}
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/GRPIP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+temp_list
+#grab just the names of GRPIP and their values
+GRPIP <- temp_list$values$item
+
+```
+
+## JWAP - Time of arrival at work - hour and minute; time-value version
+
+```{r}
+#get the JWAP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWAP and their values
+JWAP <- temp_list$values$item
+#reorder just so it is clearer
+JWAP_values <- JWAP[sort(names(JWAP))]
+#JWAP_values
+
+# Modify the entries to extract times from them
+for (i in 2:length(JWAP_values)){
+  if (!is.na(JWAP_values[[i]])){
+    numbers <- gregexpr("[0-9]+:[0-9]+ [a-z]+.[a-z].", JWAP_values[[i]])
+    JWAP_values[[i]] <- regmatches(JWAP_values[[i]], numbers)
+    
+    result <- list()
+    for (j in 1:length(JWAP_values[[i]][[1]])){
+      result[[j]] <- toupper(gsub(".","",JWAP_values[[i]][[1]][[j]],fixed=TRUE))
+      result[[j]] <- strftime(as.POSIXct(strptime(result[[j]], format = "%I:%M %p")), format = "%H:%M")
+      result[[j]] <- sapply(strsplit(result[[j]], ":"), function(n) as.numeric(n) %*% c(3600, 60))
+    }
+# Convert to numeric
+  JWAP_values[[i]] <- as.numeric(unlist(result))
+  
+# Find the midpoint value (mpt) of the times
+  mpt <- JWAP_values[[i]] <- seconds_to_period((JWAP_values[[i]][[1]]+JWAP_values[[i]][[2]])/2)
+  
+# Convert to HH:MM:SS format
+  JWAP_values[[i]] <- sprintf('%02d:%02d', mpt@hour, minute(mpt))
+  }
+}
+
+#JWAP_values
+```
+
+## JWDP - Time of departure for work - hour and minute; time-value version
+
+```{r}
+#get the JWDP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWDP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWDP and their values
+JWDP <- temp_list$values$item
+#reorder just so it is clearer
+JWDP_values <- JWDP[sort(names(JWDP))]
+#JWDP_values
+
+# Modify the entries to extract times from them
+for (i in 2:length(JWDP_values)){
+  if (!is.na(JWDP_values[[i]])){
+    numbers <- gregexpr("[0-9]+:[0-9]+ [a-z]+.[a-z].", JWDP_values[[i]])
+    JWDP_values[[i]] <- regmatches(JWDP_values[[i]], numbers)
+    
+    result <- list()
+    for (j in 1:length(JWDP_values[[i]][[1]])){
+      result[[j]] <- toupper(gsub(".","",JWDP_values[[i]][[1]][[j]],fixed=TRUE))
+      result[[j]] <- strftime(as.POSIXct(strptime(result[[j]], format = "%I:%M %p")), format = "%H:%M")
+      result[[j]] <- sapply(strsplit(result[[j]], ":"), function(n) as.numeric(n) %*% c(3600, 60))
+    }
+# Convert to numeric
+  JWDP_values[[i]] <- as.numeric(unlist(result))
+  
+# Find the midpoint value (mpt) of the times
+  mpt <- JWDP_values[[i]] <- seconds_to_period((JWDP_values[[i]][[1]]+JWDP_values[[i]][[2]])/2)
+  
+# Convert to HH:MM:SS format
+  JWDP_values[[i]] <- sprintf('%02d:%02d', mpt@hour, minute(mpt))
+  }
+}
+
+#JWDP_values
+```
+
+## JWMNP - Travel time to work
+
+```{r}
+#get the JWMNP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWMNP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#temp_list
+#grab just the names of JWMNP and their values
+JWMNP <- temp_list$values$item
+#JWMNP
+#reorder just so it is clearer
+JWMNP_values <- JWMNP[sort(names(JWMNP))]
+#JWMNP_values
+
+```
+
+# Categorical Variables
+
+## SEX - Sex
+
+```{r}
+#get the SEX info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/SEX.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of SEX and their values
+SEX <- temp_list$values$item
+#reorder just so it is clearer
+SEX_values <- SEX[sort(names(SEX))]
+#SEX_values
+
+```
+
+## FER - Gave birth to child within the past 12 months
+
+```{r}
+#get the FER info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/FER.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of FER and their values
+FER <- temp_list$values$item
+#reorder just so it is clearer
+FER_values <- FER[sort(names(FER))]
+#FER_values
+```
+
+## HHL - Household language
+
+```{r}
+#get the HHL info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/HHL.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of HHL and their values
+HHL <- temp_list$values$item
+#reorder just so it is clearer
+HHL_values <- HHL[sort(names(HHL))]
+#HHL_values
+
+```
+
+## HISPEED - Broadband (high speed) Internet service such as cable, fiber optic, or DSL service
+
+```{r}
+#get the HISPEED info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/HISPEED.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of HISPEED and their values
+HISPEED <- temp_list$values$item
+#reorder just so it is clearer
+HISPEED_values <- HISPEED[sort(names(HISPEED))]
+#HISPEED_values
+```
+
+## JWAP - Time of arrival at work - hour and minute; categorical version
+
+```{r}
+#get the JWAP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWAP and their values
+JWAP <- temp_list$values$item
+#reorder just so it is clearer
+JWAP_values <- JWAP[sort(names(JWAP))]
+#JWAP_values
+
+```
+
+## JWDP - Time of departure for work - hour and minute; categorical version
+
+```{r}
+#get the JWDP info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWDP.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWDP and their values
+JWDP <- temp_list$values$item
+#reorder just so it is clearer
+JWDP_values <- JWDP[sort(names(JWDP))]
+#JWDP_values
+
+```
+
+## JWTRNS - Means of transportation to work
+
+```{r}
+#get the JWTRNS info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWTRNS.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWDP and their values
+JWTRNS <- temp_list$values$item
+#reorder just so it is clearer
+JWTRNS_values <- JWTRNS[sort(names(JWTRNS))]
+#JWTRNS_values
+
+```
+
+## SCH - School enrollment
+
+```{r}
+#get the SCH info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/SCH.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of JWDP and their values
+SCH <- temp_list$values$item
+#reorder just so it is clearer
+SCH_values <- SCH[sort(names(SCH))]
+#SCH_values
+```
+
+## SCHL - Educational attainment
+
+```{r}
+#get the SCHL info
+temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/SCHL.json")
+#turn it into a list
+temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
+#grab just the names of SCHL and their values
+SCHL <- temp_list$values$item
+#reorder just so it is clearer
+SCHL_values <- SCHL[sort(names(SCHL))]
+#SCHL_values
+```

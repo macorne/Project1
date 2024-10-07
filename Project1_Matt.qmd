@@ -1,5 +1,7 @@
 ---
-title: "Project1_Sandbox"
+title: "Project1"
+name:  "Matt and Isaac"
+date:  "10-02-24"
 format: html
 editor: visual
 ---
@@ -9,7 +11,6 @@ editor: visual
 Build the URL as in the notes, then use GET from the httr package.
 
 ```{r}
-library("dplyr")
 library("tidyverse")
 library("tidycensus")
 library("jsonlite")
@@ -59,36 +60,6 @@ url_to_tibble <- function(url = NULL) {
 }
 
 url_to_tibble("https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24")
-```
-
-#Build a URL. Start with a toy model.
-
-```{r}
-#load_data_toy <- function(year=2022,chr_vars=c("SEX"),num_vars=c("AGEP","PWGTP")){
-#  if (year %in% -c(2010:2022)){
-#    stop("Select a year from 2010 through 2022")
-#  }
-#  base <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?", sep = "/")
-#  return(base)
-  
-#  if (SEX %in% -c(1,2)){
-#    stop("Select 1 or 2 for SEX")
-#  }
-#  if (AGEP %in% -c(1:99)){
-#    stop("Select a value from 1 through 99 for AGEP")
-#  }
-#  if (PWGTP %in% -c(1:9999)){
-#    stop("Select a value from 1 through 9999 for PWGTP")
-#  }
-#  base <- paste0(base, "get=", "SEX")
-#  URL <- paste(base, "AGEP", "PWGTP", sep = ",")
-#  return(URL)
-#  raw_data <- httr::GET(URL)
-#  parsed_data <- fromJSON(rawToChar(raw_data$content))
-#  return (tibble(parsed_data))
-#}
-
-#load_data_toy()
 ```
 
 ```{r}
@@ -200,127 +171,7 @@ pums_url_builder <- function(year = 2022, variables= c(num_vars,cat_vars),
   return(updated_url)
 }
 pums_url_builder()
-
 ```
-
-Isaac v2.0
-
-```{r}
-#Need default arguments to build the url below
-#https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX
-#If user wants to specify a geography level (e.g. by state) other than the default
-#then the url should look something like
-#https://api.census.gov/data/2022/acs/acs1/pums?get=AGEP,PWGTP,SEX&for=state:* 
-
-library(stringi)
-
-pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
-                             cat_vars = c("SEX"), geo_lev = "all", geo_lev_value = NULL) {
-  
-  #verify user input is valid
-  if (!(year %in% c(2010:2022))) {
-    stop("Year must be between 2010 and 2022!")
-  }
-  else if (!all(is.element(num_vars, c("AGEP", "PWGTP", "GASP", "GRPIP", 
-                                          "JWAP", "JWDP", "JWNMP")))) {
-    stop("Numeric variables must be within the set {AGEP, PWGTP, GASP, GRPIP, 
-         JWAP, JWDP, JWNMP}, and furthermore PWGTP must also be included.")
-    if (!(is.element("PWGTP", num_vars))) {
-      stop("PWGTP must always be included!")
-    }
-  }
-  else if (!all(is.element(cat_vars, c("FER", "HHL", "HISPEED", "JWAP", 
-                                          "JWDP", "JWTRNS", "SCH", "SCHL", "SEX"
-                                          )))) {
-    stop("Categorical variables must be within the set {FER, HHL, HISPEED, JWAP,
-         JWDP, JWTRNS, SCH, SCHL, SEX} and cannot be empty.")
-    if (length(cat_vars) == 0) {
-      stop("At least one categorical variable must be returned!")
-    }
-  }
-  else if (!all(is.element(geo_lev, c("all", "region", "division", "state"
-                                         )))) {
-    stop("Geography level must be within the set {all, region, division, state}
-         .")
-  }
-  
-  #base url: contains year only
-  base_url <- paste("https://api.census.gov/data", as.character(year), "acs", "acs1", "pums?get=", sep="/")
-  
-  #create a string consisting of the numeric arguments chosen by user, then add 
-  #this to base url
-  nums <- "" #initialize empty string
-  for (i in 1:length(num_vars)){
-    nums <- paste(nums,num_vars[i],sep=",")
-  }
-  nums <- substr(nums, 2, stri_length(nums)) #delete "," in the beginning of nums
-  updated_url <- paste0(base_url, nums)
-  
-  #do same for categorical arguments chose by user
-  chars <- "" #initialize empty string
-  for (i in 1:length(cat_vars)){
-    chars <- paste(chars,cat_vars[i],sep=",")
-  }
-  updated_url <- paste0(updated_url, chars)
-  
-  #concatenate chosen geography level, and value for said level if given
-  if (geo_lev != "All") {
-    updated_url <- paste0(updated_url, "&for=", geo_lev, ":")
-    if (is.null(geo_lev_value) == FALSE) {
-      if (typeof(geo_lev_value) != "character") {
-        stop("Value for geography level must be of the form \"XX\", where X is a number between
-             0 and 9!")
-      }
-      else if (stri_length(geo_lev_value) != 2) {
-        stop("Value for geography level must be of the form \"XX\", where X is a number between
-             0 and 9!")
-      }
-      else if (!(is.element(unlist(strsplit(geo_lev_value, split=""))[1], 0:9) | is.element
-               (unlist(strsplit(geo_lev_value,split=""))[2], 0:9))) {
-        stop("Value for geography level must be of the form \"XX\", where X is a number between
-             0 and 9!")
-      }
-      else {
-        updated_url <- paste0(updated_url, as.character(geo_lev_value)) 
-      }
-    }
-    else if (geo_lev == "all" & is.null(geo_lev_value) == FALSE) {
-      stop("You cannot specify a geography level value without picking a specific geography 
-           level (i.e. region, division, or state.")
-    }
-    else {
-      updated_url <- paste0(updated_url, "*")
-    }
-  }
-
-  return(updated_url)
-}
-
-#pums_url_builder(geo_lev = "region", geo_lev_value = "01")
-
-join_tibbles <- function(years = list(...), num_var_list = 
-                               list(c("AGEP", "PWGTP"), c("AGEP", "PWGTP")),
-                             cat_var_list = list(c("SEX", "SEX")),
-                             geo_lev_list = list("all", "all"),
-                             geo_lev_value_list = list("", "")){
-  for (year in years){
-    if (!(year %in% c(2010:2022))) {
-    stop("Year must be between 2010 and 2022!")
-    }
-  }
-  
-  tibble_1 <- url_to_tibble(pums_url_builder(years[[1]] = years, num_var_list[[1]] = num_vars,
-                            cat_var_list[[1]] = cat_vars, geo_lev_list[[1]] = geo_lev,
-                            geo_lev_value_list[[1]] = geo_lev_value))
-  tibble_2 <- url_to_tibble(pums_url_builder(years[[2]] = years, num_var_list[[2]] = num_vars,
-                            cat_var_list[[2]] = cat_vars, geo_lev_list[[2]] = geo_lev,
-                            geo_lev_value_list[[2]] = geo_lev_value))
- 
-  return(left_join(tibble_1, tibble_2, by = "year"))
-}
-join_two_tibbles()
-```
-
 
 ```{r}
 #https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
@@ -498,6 +349,7 @@ build_url <- function(cat_vars=list(),num_vars=list(),...,year=2022,GEO="All"){
   updated_url <- paste(updated_url, nums, sep="")
   
   return(updated_url)
+  
 #  strng <- paste(base_url,cat_vars,num_vars,num_dflts,GEO,sep=",")
 #  return(strng)
 }
@@ -525,186 +377,6 @@ num_fxn <- function(...){
   }
 }
 # function call
-built_url <- build_url(list("FER"),list("GASP"))
-built_url
-
-url_to_tibble <- function(url = NULL) {
-    raw_data <- httr::GET(url)
-    parsed_data <- fromJSON(rawToChar(raw_data$content))
-    parsed_tibble <- as_tibble(parsed_data)
-#    return (as_tibble(parsed_data))
-    parsed_tibble <- mutate(year = year)
-    return(as_tibble(parsed_data))
-}
-
-url_to_tibble(built_url)
-
-concatenate_tibbles <- function(years = list(...)){
-  for (year in years){
-    tibble <- url_to_tibble()
-  }
- 
-  return(tibbles)
-}
-
-tibbles
+build_url()
 
 ```
-
-```{r}
-vars <- load_variables(year=2022,
-                       dataset="acs1",
-                       cache=FALSE)
-view(vars) #Allows to view the entire tibble
-
-#rent <- "DP04_0142PE" #PE means percentage
-#example_data <- get_acs(variables = c("SEX","AGEP","PWGTP"),
-# geography = "Region",
-# geometry = TRUE,# returns the polygon data and allows for maps easily
-# survey = "acs1",
-# show_call = TRUE)
-#example_data
-```
-
-```{r}
-rent <- "DP04_0142PE" #PE means percentage
-rent_data <- get_acs(variables = "DP02_0001E",
- geography = "state",
- geometry = TRUE,# returns the polygon data and allows for maps easily
- survey = "acs1",
- show_call = TRUE) #can add state and other things
-```
-```{r}
-library(dplyr)
-years <- c(2021:2022)
-nc_pums <- list()
-for (i in 1:length(years)){
-  nc_pums[[i]] <- get_pums(
-    variables = c("PUMA", "SEX", "AGEP", "JWAP", "JWDP", "SCHL"),
-    state = "NC",
-    survey = "acs1",
-    year = years[i]
-  ) |> mutate(year = years[i])
-}
-
-example <- data.table::rbindlist(nc_pums)
-view(example)
-```
-```{r}
-#get the JWAP info
-temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
-#turn it into a list
-temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
-#grab just the names of JWAP and their values
-JWAP <- temp_list$values$item
-#reorder just so it is clearer
-JWAP_values <- JWAP[sort(names(JWAP))]
-#JWAP_values
-
-#nmbrs <- gregexpr("[0-9]+:[0-9]+", JWAP_values[[280]])
-#JWAP_values[[280]] <- regmatches(JWAP_values[[280]], nmbrs)
-#JWAP_values[[280]]
-
-for (i in 2:length(JWAP_values)){
-  if (!is.na(JWAP_values[[i]])){
-    numbers <- gregexpr("[0-9]+:[0-9]+", JWAP_values[[i]])
-    JWAP_values[[i]] <- regmatches(JWAP_values[[i]], numbers)
-    result <- list()
-    for (j in 1:length(JWAP_values[[i]][[1]])){
-      result[[j]] <- gsub(":","",JWAP_values[[i]][[1]][[j]])
-    }
-# Convert to numeric
-#  JWAP_values[[i]] <- as.numeric(unlist(result))
-  
-# Find the midpoint value of the times
-#  JWAP_values[[i]] <- mean(JWAP_values[[i]][1],JWAP_values[[i]][2])
-  
-# Convert to seconds
-#  JWAP_values[[i]] <- as.character(JWAP_values[[i]])
-#  JWAP_values[[i]] <- lapply(strsplit(JWAP_values[[i]], ""), head, -2)
-  }
-}
-
-JWAP_values[[280]][[1]]
-
-#Time1 <- 
-#format(as.POSIXct(Time1,format='%I:%M %p'),format="%H:%M:%S")
-#typeof(JWAP_values[[280]][[1]][[1]])
-#3600*as.numeric(gsub(" ","",paste(JWAP_values[[280]][[1]][[1]],JWAP_values[[280]][[1]][[2]])))
-```
-
-```{r}
-library(lubridate)
-#get the JWAP info
-temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
-#turn it into a list
-temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
-#grab just the names of JWAP and their values
-JWAP <- temp_list$values$item
-#reorder just so it is clearer
-JWAP_values <- JWAP[sort(names(JWAP))]
-#JWAP_values
-
-# Modify the entries to extract times from them
-for (i in 2:length(JWAP_values)){
-  if (!is.na(JWAP_values[[i]])){
-    numbers <- gregexpr("[0-9]+:[0-9]+ [a-z]+.[a-z].", JWAP_values[[i]])
-    JWAP_values[[i]] <- regmatches(JWAP_values[[i]], numbers)
-    
-    result <- list()
-    for (j in 1:length(JWAP_values[[i]][[1]])){
-      result[[j]] <- toupper(gsub(".","",JWAP_values[[i]][[1]][[j]],fixed=TRUE))
-      result[[j]] <- strftime(as.POSIXct(strptime(result[[j]], format = "%I:%M %p")), format = "%H:%M")
-      result[[j]] <- sapply(strsplit(result[[j]], ":"), function(n) as.numeric(n) %*% c(3600, 60))
-    }
-# Convert to numeric
-  JWAP_values[[i]] <- as.numeric(unlist(result))
-  
-# Find the midpoint value (mpt) of the times
-  mpt <- JWAP_values[[i]] <- seconds_to_period((JWAP_values[[i]][[1]]+JWAP_values[[i]][[2]])/2)
-  
-# Convert to HH:MM:SS format
-  JWAP_values[[i]] <- sprintf('%02d:%02d', mpt@hour, minute(mpt))
-  }
-}
-
-JWAP_values
-
-```
-```{r}
-#get the JWDP info
-temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWDP.json")
-#turn it into a list
-temp_list <- temp$content |> rawToChar() |>jsonlite::fromJSON()
-#grab just the names of JWDP and their values
-JWDP <- temp_list$values$item
-#reorder just so it is clearer
-JWDP_values <- JWDP[sort(names(JWDP))]
-#JWDP_values
-
-# Modify the entries to extract times from them
-for (i in 2:length(JWDP_values)){
-  if (!is.na(JWDP_values[[i]])){
-    numbers <- gregexpr("[0-9]+:[0-9]+ [a-z]+.[a-z].", JWDP_values[[i]])
-    JWDP_values[[i]] <- regmatches(JWDP_values[[i]], numbers)
-    
-    result <- list()
-    for (j in 1:length(JWDP_values[[i]][[1]])){
-      result[[j]] <- toupper(gsub(".","",JWDP_values[[i]][[1]][[j]],fixed=TRUE))
-      result[[j]] <- strftime(as.POSIXct(strptime(result[[j]], format = "%I:%M %p")), format = "%H:%M")
-      result[[j]] <- sapply(strsplit(result[[j]], ":"), function(n) as.numeric(n) %*% c(3600, 60))
-    }
-# Convert to numeric
-  JWDP_values[[i]] <- as.numeric(unlist(result))
-  
-# Find the midpoint value (mpt) of the times
-  mpt <- JWDP_values[[i]] <- seconds_to_period((JWDP_values[[i]][[1]]+JWDP_values[[i]][[2]])/2)
-  
-# Convert to HH:MM:SS format
-  JWDP_values[[i]] <- sprintf('%02d:%02d', mpt@hour, minute(mpt))
-  }
-}
-
-```
-
-

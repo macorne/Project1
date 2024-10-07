@@ -1,11 +1,10 @@
 ---
-title: "Project 1"
-author: "Isaac and Matt"
-date: "10-06-2024"
+title: "Test"
+author: "Isaac's Code"
 format: html
 editor: visual
 editor_options: 
-chunk_output_type: inline
+  chunk_output_type: inline
 ---
 
 ## Querying Census API
@@ -325,32 +324,44 @@ pums_big_tib <- function(years = NULL) {
   list_of_tibbles <- list()
   
   for (i in years) {
-    num_question_by_year[i] <- readline(paste0("How many numerical variables do you want to query for year ", i, "? Enter a positive integer: "))
+    num_question_by_year[i] <- readline(paste0("How many numerical variables do you want 
+                                        to query for year ", i, "? Enter a positive 
+                                        integer: "))
     num_input <- c()
     for (j in 1:num_question_by_year[i]) {
-      num_input[j] <- readline(paste0("Enter a numerical value for year ", i, ": "))
+      num_input[j] <- readline(paste0("Enter a numerical value for year ", i, 
+                                      ": "))
     }
     num_vars_by_year[[i]] <- num_input
     
-    cat_question_by_year[i] <- readline(paste0("How many categorical variables do you want to query for year ", i, "? Enter a positive integer: "))
+    cat_question_by_year[i] <- readline(paste0("How many categorical variables do you want 
+                                        to query for year ", i, "? Enter a positive 
+                                        integer: "))
     cat_input <- c()
     for (j in 1:cat_question_by_year[i]) {
-      cat_input[j] <- readline(paste0("Enter a categorical value for year ", i, ": "))
+      cat_input[j] <- readline(paste0("Enter a categorical value for year ", i,
+                                                     ": "))
     }
     cat_vars_by_year[[i]] <- cat_input
     
-    geo_lev_by_year[i] = readline(paste0("Enter a geography level for year ", i, ": "))
-    geo_question_by_year[i] = readline("Would you like to also enter a value for the geography level for this year? Enter \'yes\' or \'no\': ")
+    geo_lev_by_year[i] = readline(paste0("Enter a geography level for year ", i, 
+                                         ": "))
+    geo_question_by_year[i] = readline("Would you like to also enter a value for 
+                                       the geography level for this year? Enter
+                                       \'yes\' or \'no\': ")
     if (geo_question_by_year[i] == "yes") {
-      geo_lev_value_by_year[i] = readline(paste0("Enter a value for the geography level for year ", i, ": "))
+      geo_lev_value_by_year[i] = readline(paste0("Enter a value for the geography
+                                                  level for year ", i, ": "))
     }
     else {
       geo_lev_value_by_year[i] = NULL
     }
-    list_of_urls[[i]] <- pums_url_builder(year = i, num_vars = num_vars_by_year[[i]], 
+    list_of_urls[[i]] <- pums_url_builder(year = i, num_vars = 
+                                              num_vars_by_year[[i]], 
                                             cat_vars = cat_vars_by_year[[i]], 
                                             geo_lev = geo_lev_by_year[i], 
-                                            geo_lev_value = geo_lev_value_by_year[i])
+                                            geo_lev_value = 
+                                              geo_lev_value_by_year[i])
     list_of_tibbles[[i]] <- url_to_tibble(list_of_urls[[i]], i)
   }
   
@@ -361,7 +372,7 @@ pums_big_tib <- function(years = NULL) {
 pums_big_tib(c(2021, 2022))
 ```
 
-Success! Now we need to add a class for our big tibble.
+Success! Now we need to add a class for out big tibble.
 
 ```{r}
 pums_big_tib <- function(years = NULL) {
@@ -377,24 +388,36 @@ pums_big_tib <- function(years = NULL) {
   list_of_tibbles <- list()
   
   for (i in years) {
-    num_question_by_year[i] <- readline(paste0("How many numerical variables do you want to query for year ", i, "? Enter a positive integer: "))
+    num_question_by_year[i] <- readline(paste0("How many numerical 
+    variables do you want to query for year ", i, "? Enter a positive 
+                                               integer: "))
     num_input <- c()
     for (j in 1:num_question_by_year[i]) {
-      num_input[j] <- readline(paste0("Enter a numerical value - defaults AGEP and PWGTP - for year ", i, ": "))
+      num_input[j] <- readline(paste0("Enter a numerical value for 
+                                      year", i, ": "))
     }
     num_vars_by_year[[i]] <- num_input
     
-    cat_question_by_year[i] <- readline(paste0("How many categorical variables do you want to query for year ", i, "? Enter a positive integer: "))
+    cat_question_by_year[i] <- readline(paste0("How many categorical 
+                                               variables do you want to 
+                                               query for year ", i, "? 
+                                               Enter a positive integer
+                                               : "))
     cat_input <- c()
     for (j in 1:cat_question_by_year[i]) {
-      cat_input[j] <- readline(paste0("Enter a categorical value - default SEX - for year ", i, ": "))
+      cat_input[j] <- readline(paste0("Enter a categorical value for 
+                                      year ", i, ": "))
     }
     cat_vars_by_year[[i]] <- cat_input
     
-    geo_lev_by_year[i] = readline(paste0("Enter a geography level for year ", i, ": "))
-    geo_question_by_year[i] = readline("Would you like to also enter a value for the geography level for this year? Enter \'yes\' or \'no\': ")
+    geo_lev_by_year[i] = readline(paste0("Enter a geography level for 
+                                         year ", i, ": "))
+    geo_question_by_year[i] = readline("Would you like to also enter a 
+    value for the geography level for this year? Enter 
+                                       \'yes\' or \'no\': ")
     if (geo_question_by_year[i] == "yes") {
-      geo_lev_value_by_year[i] = readline(paste0("Enter a value for the geography level for year ", i, ": "))
+      geo_lev_value_by_year[i] = readline(paste0("Enter a value for the
+      geography level for year ", i, ": "))
     }
     else {
       geo_lev_value_by_year[i] = NULL
@@ -411,17 +434,16 @@ pums_big_tib <- function(years = NULL) {
   }
   
   big_tib <- bind_rows(list_of_tibbles)
-  
   #add class for big tibble
-  class(big_tib) <- c("census", class(big_tib))
+  class(big_tib) <- c("census", big_tib)
 
   return (big_tib)
 }
 
-summary.census <- function(tib, num_vars, cat_vars) {
+summary.census <- function(pums_big_tib, num_vars, cat_vars) {
   num_vars_summary <- list()
-  for (i in 1:length(num_vars)) {
-    if (num_vars[[i]] == "PWGTP") {
+  for (i in 1:num_vars) {
+    if (i == "PWGTP") {
       next
     }
     else{
@@ -434,6 +456,5 @@ summary.census <- function(tib, num_vars, cat_vars) {
 }
 
 my_tib <- pums_big_tib(c(2021, 2022))
-my_tib
 summary.census(my_tib, c("AGEP", "PWGTP"), c("SEX"))
 ```

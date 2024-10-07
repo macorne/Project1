@@ -1,10 +1,11 @@
 ---
 title: "Project 1"
-author: "Isaac"
+author: "Isaac and Matt"
+date: "10-06-2024"
 format: html
 editor: visual
 editor_options: 
-  chunk_output_type: inline
+chunk_output_type: inline
 ---
 
 ## Querying Census API
@@ -410,14 +411,12 @@ pums_big_tib <- function(years = NULL) {
   }
   
   big_tib <- bind_rows(list_of_tibbles)
+  
   #add class for big tibble
   class(big_tib) <- c("census", class(big_tib))
 
   return (big_tib)
 }
-
-mutate(across(where(is.numeric),
-.fns = list(mean = mean, median = median), .names = "{.col}_{.fn}"))
 
 summary.census <- function(tib, num_vars, cat_vars) {
   num_vars_summary <- list()
@@ -426,13 +425,15 @@ summary.census <- function(tib, num_vars, cat_vars) {
       next
     }
     else{
-      num_vars_summary[[i]] <- mean(as.numeric(num_vars[[i]]))
-      names(num_vars_summary[[i]]) <- paste0("Mean of variable ", i, ": ") 
+      num_vars_summary[[i]] <- mean(as.numeric(num_vars[i]))
+      names(num_vars_summary)[i] <- paste0("Mean of variable ", i, 
+                                           ": ") 
     }
   }
   return (num_vars_summary)
 }
 
 my_tib <- pums_big_tib(c(2021, 2022))
+my_tib
 summary.census(my_tib, c("AGEP", "PWGTP"), c("SEX"))
 ```

@@ -321,7 +321,6 @@ join_tibbles <- function(years = list(...), num_var_list =
 join_two_tibbles()
 ```
 
-
 ```{r}
 #https://api.census.gov/data/2022/acs/acs1/pums?get=SEX,PWGTP,MAR&SCHL=24
 #Matt attempt
@@ -574,6 +573,7 @@ rent_data <- get_acs(variables = "DP02_0001E",
  survey = "acs1",
  show_call = TRUE) #can add state and other things
 ```
+
 ```{r}
 library(dplyr)
 years <- c(2021:2022)
@@ -590,6 +590,7 @@ for (i in 1:length(years)){
 example <- data.table::rbindlist(nc_pums)
 view(example)
 ```
+
 ```{r}
 #get the JWAP info
 temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWAP.json")
@@ -671,6 +672,7 @@ for (i in 2:length(JWAP_values)){
 JWAP_values
 
 ```
+
 ```{r}
 #get the JWDP info
 temp <- httr::GET("https://api.census.gov/data/2022/acs/acs1/pums/variables/JWDP.json")
@@ -706,5 +708,3 @@ for (i in 2:length(JWDP_values)){
 }
 
 ```
-
-

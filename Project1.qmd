@@ -306,7 +306,7 @@ pums_url_builder <- function(year = 2022, num_vars = c("AGEP", "PWGTP"),
 
   return(updated_url)
 }
-pums_url_builder(geo_lev = "region", geo_lev_value = "01")
+pums_url_builder(geo_lev = "state", geo_lev_value = "16")
 ```
 
 Lastly, we want to create a function that allows the user to specify multiple years of survey data, and all other options from the pums_url_builder function, which will then call the url_to_tibble function to create tibbles for each year, and then combine those tibbles into one big one and output that.
